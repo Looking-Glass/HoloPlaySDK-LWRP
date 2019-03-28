@@ -1,0 +1,13 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Holoplay/Examples/8 - Multiple Looking Glasses.unity
+    guid: 875cc7fa4d685314dbe46c9f62eb64aa
+  - enabled: 0
+    path: Assets/Holoplay/Basic Example.unity
+    guid: 2c7867b5a5e0d154c854a0bd5dae9d84
