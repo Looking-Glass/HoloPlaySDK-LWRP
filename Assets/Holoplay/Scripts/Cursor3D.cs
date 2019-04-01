@@ -95,7 +95,11 @@ namespace LookingGlass {
 			Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y);
 			float monitorW = Screen.width;
 			float monitorH = Screen.height;
-			if (Application.platform == RuntimePlatform.WindowsPlayer) {
+			int activeDisplays = 0; // check if multiple displays are active
+			foreach (var d in Display.displays) {
+				if (d.active) activeDisplays++;	
+			}
+			if (Application.platform == RuntimePlatform.WindowsPlayer && activeDisplays > 1) {
 				mousePos = Display.RelativeMouseAt(new Vector3(Input.mousePosition.x, Input.mousePosition.y));
 				int monitor = Mathf.RoundToInt(mousePos.z);
 				if (Display.displays.Length > monitor) {
@@ -119,9 +123,9 @@ namespace LookingGlass {
 
 			// find world pos from depth
 			float depth = DecodeFloatRG(enc);
-			bool hit = depth >= 0.01f;
+			// bool hit = depth >= 0.01f;
 			// bool hit = true;
-			depth = hit ? depth : 0.5f; // if nothing hit, default depth
+			// depth = hit ? depth : 0.5f; // if nothing hit, default depth
 			depth = cursorCam.nearClipPlane + depth * (cursorCam.farClipPlane - cursorCam.nearClipPlane);
 			Vector3 screenPoint = new Vector3(mousePos01.x, mousePos01.y, depth);
 			worldPos = cursorCam.ViewportToWorldPoint(screenPoint);

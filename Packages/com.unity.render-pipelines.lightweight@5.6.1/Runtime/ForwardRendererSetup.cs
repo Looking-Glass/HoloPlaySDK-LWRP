@@ -123,6 +123,10 @@ namespace UnityEngine.Experimental.Rendering.LWRP
 
             Camera camera = renderingData.cameraData.camera;
 
+            // holoplay
+            var holoplayLightfield = camera.GetComponent<LookingGlass.LightfieldPostProcess>();
+            if (holoplayLightfield != null) return;
+
             renderer.SetupPerObjectLightIndices(ref renderingData.cullResults, ref renderingData.lightData);
             RenderTextureDescriptor baseDescriptor = ScriptableRenderer.CreateRenderTextureDescriptor(ref renderingData.cameraData);
             ClearFlag clearFlag = ScriptableRenderer.GetCameraClearFlag(renderingData.cameraData.camera);

@@ -62,6 +62,10 @@ namespace UnityEngine.Experimental.Rendering.LWRP
 
         public bool Setup(RenderTargetHandle destination, ref RenderingData renderingData)
         {
+            // holoplay
+            if (LookingGlass.Holoplay.shadowmapReady)
+                return true;
+
             Clear();
             this.destination = destination;
 
@@ -121,7 +125,9 @@ namespace UnityEngine.Experimental.Rendering.LWRP
             if (cmd == null)
                 throw new ArgumentNullException("cmd");
 
-            if (m_MainLightShadowmapTexture)
+            // holoplay
+            // added "&& Looking.."
+            if (m_MainLightShadowmapTexture && LookingGlass.Holoplay.shadowmapDispose)
             {
                 RenderTexture.ReleaseTemporary(m_MainLightShadowmapTexture);
                 m_MainLightShadowmapTexture = null;
@@ -153,25 +159,28 @@ namespace UnityEngine.Experimental.Rendering.LWRP
             CommandBuffer cmd = CommandBufferPool.Get(k_RenderMainLightShadowmapTag);
             using (new ProfilingSample(cmd, k_RenderMainLightShadowmapTag))
             {
-                var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
+                // holoplay, this wasn't in conditional before
+                if (!LookingGlass.Holoplay.shadowmapReady) {
+                    var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
 
-                m_MainLightShadowmapTexture = ShadowUtils.GetTemporaryShadowTexture(m_ShadowmapWidth,
-                    m_ShadowmapHeight, k_ShadowmapBufferBits);
-                SetRenderTarget(cmd, m_MainLightShadowmapTexture, RenderBufferLoadAction.DontCare,
-                    RenderBufferStoreAction.Store, ClearFlag.Depth, Color.black, TextureDimension.Tex2D);
+                    m_MainLightShadowmapTexture = ShadowUtils.GetTemporaryShadowTexture(m_ShadowmapWidth,
+                        m_ShadowmapHeight, k_ShadowmapBufferBits);
+                    SetRenderTarget(cmd, m_MainLightShadowmapTexture, RenderBufferLoadAction.DontCare,
+                        RenderBufferStoreAction.Store, ClearFlag.Depth, Color.black, TextureDimension.Tex2D);
 
-                for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
-                {
-                    var splitData = settings.splitData;
-                    splitData.cullingSphere = m_CascadeSplitDistances[cascadeIndex];
-                    settings.splitData = splitData;
-                    Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, shadowLightIndex, ref shadowData, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].resolution);
-                    ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
-                    ShadowUtils.RenderShadowSlice(cmd, ref context, ref m_CascadeSlices[cascadeIndex],
-                        ref settings, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].viewMatrix);
+                    for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
+                    {
+                        var splitData = settings.splitData;
+                        splitData.cullingSphere = m_CascadeSplitDistances[cascadeIndex];
+                        settings.splitData = splitData;
+                        Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, shadowLightIndex, ref shadowData, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].resolution);
+                        ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
+                        ShadowUtils.RenderShadowSlice(cmd, ref context, ref m_CascadeSlices[cascadeIndex],
+                            ref settings, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].viewMatrix);
+                    }
                 }
 
-                    SetupMainLightShadowReceiverConstants(cmd, ref shadowData, shadowLight);
+                SetupMainLightShadowReceiverConstants(cmd, ref shadowData, shadowLight);
             }
 
             CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, true);

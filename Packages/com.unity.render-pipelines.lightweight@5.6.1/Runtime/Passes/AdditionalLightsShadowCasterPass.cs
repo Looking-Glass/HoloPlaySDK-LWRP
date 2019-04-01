@@ -50,6 +50,10 @@ namespace UnityEngine.Experimental.Rendering.LWRP
 
         public bool Setup(RenderTargetHandle destination, ref RenderingData renderingData, int maxVisibleAdditinalLights)
         {
+            // holoplay
+            if (LookingGlass.Holoplay.shadowmapReady)
+                return true;
+
             Clear();
             this.destination = destination;
 
@@ -138,7 +142,9 @@ namespace UnityEngine.Experimental.Rendering.LWRP
             if (cmd == null)
                 throw new ArgumentNullException("cmd");
 
-            if (m_AdditionalLightsShadowmapTexture)
+            // holoplay
+            // added "&& Looking.."
+            if (m_AdditionalLightsShadowmapTexture && LookingGlass.Holoplay.shadowmapDispose)
             {
                 RenderTexture.ReleaseTemporary(m_AdditionalLightsShadowmapTexture);
                 m_AdditionalLightsShadowmapTexture = null;
@@ -167,28 +173,31 @@ namespace UnityEngine.Experimental.Rendering.LWRP
             CommandBuffer cmd = CommandBufferPool.Get(k_RenderAdditionalLightShadows);
             using (new ProfilingSample(cmd, k_RenderAdditionalLightShadows))
             {
-                int shadowmapWidth = shadowData.additionalLightsShadowmapWidth;
-                int shadowmapHeight = shadowData.additionalLightsShadowmapHeight;
+                // holoplay
+                if (!LookingGlass.Holoplay.shadowmapReady) {
+                    int shadowmapWidth = shadowData.additionalLightsShadowmapWidth;
+                    int shadowmapHeight = shadowData.additionalLightsShadowmapHeight;
 
-                m_AdditionalLightsShadowmapTexture = ShadowUtils.GetTemporaryShadowTexture(shadowmapWidth, shadowmapHeight, k_ShadowmapBufferBits);
+                    m_AdditionalLightsShadowmapTexture = ShadowUtils.GetTemporaryShadowTexture(shadowmapWidth, shadowmapHeight, k_ShadowmapBufferBits);
 
-                SetRenderTarget(cmd, m_AdditionalLightsShadowmapTexture, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                    ClearFlag.Depth, Color.black, TextureDimension.Tex2D);
+                    SetRenderTarget(cmd, m_AdditionalLightsShadowmapTexture, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                        ClearFlag.Depth, Color.black, TextureDimension.Tex2D);
 
-                for (int i = 0; i < m_AdditionalShadowCastingLightIndices.Count; ++i)
-                {
-                    int shadowLightIndex = m_AdditionalShadowCastingLightIndices[i];
-                    VisibleLight shadowLight = visibleLights[shadowLightIndex];
+                    for (int i = 0; i < m_AdditionalShadowCastingLightIndices.Count; ++i)
+                    {
+                        int shadowLightIndex = m_AdditionalShadowCastingLightIndices[i];
+                        VisibleLight shadowLight = visibleLights[shadowLightIndex];
 
-                    if (m_AdditionalShadowCastingLightIndices.Count > 1)
-                        ShadowUtils.ApplySliceTransform(ref m_AdditionalLightSlices[i], shadowmapWidth, shadowmapHeight);
+                        if (m_AdditionalShadowCastingLightIndices.Count > 1)
+                            ShadowUtils.ApplySliceTransform(ref m_AdditionalLightSlices[i], shadowmapWidth, shadowmapHeight);
 
-                        var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
-                        Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, shadowLightIndex,
-                            ref shadowData, m_AdditionalLightSlices[i].projectionMatrix, m_AdditionalLightSlices[i].resolution);
-                        ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
-                    ShadowUtils.RenderShadowSlice(cmd, ref context, ref m_AdditionalLightSlices[i], ref settings, m_AdditionalLightSlices[i].projectionMatrix, m_AdditionalLightSlices[i].viewMatrix);
-                    additionalLightHasSoftShadows |= shadowLight.light.shadows == LightShadows.Soft;
+                            var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
+                            Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, shadowLightIndex,
+                                ref shadowData, m_AdditionalLightSlices[i].projectionMatrix, m_AdditionalLightSlices[i].resolution);
+                            ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
+                        ShadowUtils.RenderShadowSlice(cmd, ref context, ref m_AdditionalLightSlices[i], ref settings, m_AdditionalLightSlices[i].projectionMatrix, m_AdditionalLightSlices[i].viewMatrix);
+                        additionalLightHasSoftShadows |= shadowLight.light.shadows == LightShadows.Soft;
+                    }
                 }
 
                 SetupAdditionalLightsShadowReceiverConstants(cmd, ref shadowData);

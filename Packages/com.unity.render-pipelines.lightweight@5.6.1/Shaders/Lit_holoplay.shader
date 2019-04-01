@@ -114,14 +114,14 @@ Shader "Lightweight Render Pipeline/Lit_holoplay"
             //--------------------------------------
             // GPU Instancing
             #pragma multi_compile_instancing
+            // holoplay
             #pragma instancing_options procedural:setup
 
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment
 
             #include "LitInput.hlsl"
-
-
+            // holoplay
             #include "LitForwardPass_holoplay.hlsl"
             ENDHLSL
         }
@@ -149,12 +149,15 @@ Shader "Lightweight Render Pipeline/Lit_holoplay"
             // GPU Instancing
             #pragma multi_compile_instancing
             #pragma shader_feature _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            // holoplay
+            #pragma instancing_options procedural:setup
 
             #pragma vertex ShadowPassVertex
             #pragma fragment ShadowPassFragment
 
             #include "LitInput.hlsl"
-            #include "ShadowCasterPass.hlsl"
+            // holoplay
+            #include "ShadowCasterPass_holoplay.hlsl"
             ENDHLSL
         }
 

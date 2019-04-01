@@ -97,7 +97,8 @@ Varyings LitPassVertex(Attributes input)
     UNITY_SETUP_INSTANCE_ID(input);
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-// holoplay
+    // holoplay
+    // todo:remove
     input.positionOS.x += 0.5;
 
     VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);

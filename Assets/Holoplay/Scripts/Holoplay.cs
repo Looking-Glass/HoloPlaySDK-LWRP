@@ -24,13 +24,13 @@ namespace LookingGlass {
 				return instance;
 			} 
 		}
+		// currently rendering
+		private static Holoplay current;
+		public static Holoplay Current { get{ return current; } }
 
 		// info
 		public static readonly Version version = new Version(1,0,0);
-		public const string versionLabel = "b8";
-
-		// lwrp
-		public bool usingLWRP;
+		public const string versionLabel = "";
 
 		// camera
 		public CameraClearFlags clearFlags = CameraClearFlags.Color;
@@ -99,6 +99,16 @@ namespace LookingGlass {
 		[System.NonSerialized] public Calibration cal;
 		bool debugInfo;
 
+		// lwrp stuff
+#if HOLOPLAY_LWRP
+		public static bool shadowmapReady;
+		public static bool shadowmapDispose;
+		public static bool shadowmapOnlyRender; // todo: probably unnecessary
+		// todo: probably can be replaced with a check for a unique condition between the two
+		// like, if !shadowmapReady && !shadowmapDispose
+		// because the rest of the time it will def be ready
+#endif
+
 		// functions
 		void OnEnable() {
 			cam = GetComponent<Camera>();
@@ -109,12 +119,13 @@ namespace LookingGlass {
 			instance = this; // most recently enabled Capture set as instance
 			// lightfield camera (only does blitting of the quilt into a lightfield)
 			var lightfieldCamGO = new GameObject(lightfieldCamName);
-			lightfieldCamGO.hideFlags = HideFlags.HideAndDontSave;
 			lightfieldCamGO.transform.SetParent(transform);
+			lightfieldCamGO.hideFlags = HideFlags.HideAndDontSave;
 			var lightfieldPost = lightfieldCamGO.AddComponent<LightfieldPostProcess>();
+			lightfieldPost.hideFlags = HideFlags.HideAndDontSave;
 			lightfieldPost.holoplay = this;
-			lightfieldPost.lwrp = usingLWRP; // lwrp
 			lightfieldCam = lightfieldCamGO.AddComponent<Camera>();
+			lightfieldCam.hideFlags = HideFlags.HideAndDontSave;
 #if UNITY_2017_3_OR_NEWER
 			lightfieldCam.allowDynamicResolution = false;
 #endif
@@ -157,7 +168,20 @@ namespace LookingGlass {
             }
             // quilt screenshot input
             if (Input.GetKeyDown(screenshotQuiltKey)) {
-                TakeScreenShot(quiltRT); // quiltRT already have been rendered last frame
+				var previousPreset = quiltPreset;
+				quiltPreset = Quilt.Preset.Standard;
+				var previousPreviewSettings = preview2D;
+				preview2D = false;
+				// set up the quilt for taking screens
+				var tempQuilt = RenderTexture.GetTemporary(quiltSettings.quiltWidth, quiltSettings.quiltHeight, 0);
+				var previousQuilt = quiltRT;
+				quiltRT = tempQuilt;
+				LateUpdate(); // renders the lightfield
+                TakeScreenShot(quiltRT);
+				// return quilt to normal
+				quiltPreset = previousPreset;
+				quiltRT = previousQuilt;
+				preview2D = previousPreviewSettings;
             }
 			// debug info
 			if (Input.GetKey(KeyCode.RightShift) && Input.GetKeyDown(KeyCode.F8))
@@ -167,6 +191,8 @@ namespace LookingGlass {
         }
 
         void LateUpdate () {
+			// set as current
+			current = this;
 			// pass the calibration values to lightfield material
 			PassSettingsToMaterial();
 			// set up camera
@@ -205,8 +231,18 @@ namespace LookingGlass {
 			// set shadow distance to start from holoplay center
 			float shadowDist = QualitySettings.shadowDistance;
 			QualitySettings.shadowDistance += GetCamDistance();
+			// lwrp stuff
+#if HOLOPLAY_LWRP
+			shadowmapDispose = false;
+			shadowmapReady = false;
+#endif
 			// render the views
 			for (int i = 0; i < quiltSettings.numViews; i++) {
+				// dispose shadowmap if this is the last render
+#if HOLOPLAY_LWRP
+				if (i == quiltSettings.numViews - 1) 
+					shadowmapDispose = true;
+#endif
 				// onViewRender
 				if (onViewRender != null)
 					onViewRender.Invoke(this, i);
@@ -228,9 +264,9 @@ namespace LookingGlass {
 				cam.Render();
 				// note: not using graphics.copytexture because it does not honor alpha
 				// reverse view because Y is taken from the top
-				int ri = quiltSettings.viewRows * quiltSettings.viewColumns - i - 1;
-				int x = (i % quiltSettings.viewRows) * quiltSettings.viewWidth;
-				int y = (ri / quiltSettings.viewRows) * quiltSettings.viewHeight;
+				int ri = quiltSettings.viewColumns * quiltSettings.viewRows - i - 1;
+				int x = (i % quiltSettings.viewColumns) * quiltSettings.viewWidth;
+				int y = (ri / quiltSettings.viewColumns) * quiltSettings.viewHeight;
 				// again owing to the reverse Y
 				Rect rtRect = new Rect(x, y + quiltSettings.paddingVertical, quiltSettings.viewWidth, quiltSettings.viewHeight);
 				Graphics.SetRenderTarget(quiltRT);
@@ -242,7 +278,13 @@ namespace LookingGlass {
 				cam.targetTexture = null;
 				RenderTexture.ReleaseTemporary(viewRT);
 				// this helps 3D cursor ReadPixels faster
+				// actually hurts with LWRP though
+#if !HOLOPLAY_LWRP
 				GL.Flush();
+#else
+				// lwrp shadowmap
+				shadowmapReady = true;
+#endif
 				// move to next view
         	}
 			// onViewRender final pass
@@ -257,6 +299,10 @@ namespace LookingGlass {
 			cam.fieldOfView = fov;
 			// reset shadow dist
 			QualitySettings.shadowDistance = shadowDist;
+			// lwrp
+#if HOLOPLAY_LWRP
+			shadowmapReady = false;
+#endif
         }
 
 		void OnValidate() {
@@ -265,11 +311,7 @@ namespace LookingGlass {
 			size = Mathf.Clamp(size, 0.01f, Mathf.Infinity);
 			// custom quilt settings
 			if (quiltPreset == Quilt.Preset.Custom) {
-				customQuiltSettings.Setup();
-				if (quiltRT != null) DestroyImmediate(quiltRT);
-				quiltRT = new RenderTexture(quiltSettings.quiltWidth, quiltSettings.quiltHeight, 0) {
-					filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
-				PassSettingsToMaterial();
+				SetupQuilt();
 			}
 		}
 
@@ -366,10 +408,10 @@ namespace LookingGlass {
 			lightfieldMat.SetFloat("center", cal.center + centerOffset);
 			lightfieldMat.SetFloat("subpixelSize", 1f / (cal.screenWidth * 3f));
 			lightfieldMat.SetVector("tile", new Vector4(
-                quiltSettings.viewRows,
                 quiltSettings.viewColumns,
+                quiltSettings.viewRows,
                 quiltSettings.numViews,
-                quiltSettings.viewRows * quiltSettings.viewColumns
+                quiltSettings.viewColumns * quiltSettings.viewRows
             ));
             lightfieldMat.SetVector("viewPortion", new Vector4(
                 quiltSettings.viewPortionHorizontal,
@@ -407,6 +449,18 @@ namespace LookingGlass {
 		/// </summary>
 		public float GetCamDistance() {
 			return size / Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
+		}
+
+		/// <summary>
+		/// Will set up the quilt and the quilt rendertexture.
+		/// Should be called after modifying custom quilt settings.
+		/// </summary>
+		public void SetupQuilt() {
+			customQuiltSettings.Setup(); // even if not custom quilt, just set this up anyway
+			if (quiltRT != null) DestroyImmediate(quiltRT);
+			quiltRT = new RenderTexture(quiltSettings.quiltWidth, quiltSettings.quiltHeight, 0) {
+				filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
+			PassSettingsToMaterial();
 		}
 
         // save screenshot as png file with the given rendertexture

@@ -1,0 +1,15 @@
+{
+    "name": "LookingGlass.Dev",
+    "references": [
+        "GUID:e1584d79cd76c0743819030b5808b891"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

@@ -59,9 +59,7 @@ namespace LookingGlass {
             for (int i = 0; i < numViews; i++) {
                 localToWorldMatrices[i] = objMR.localToWorldMatrix;
                 worldToLocalMatrices[i] = objMR.worldToLocalMatrix;
-                // Debug.Log(localToWorldMatrices[i]);
-                // transformMatrices[i].m00 += 0.1f;
-                // transformMatrices[i].m00 += i * 1f; // no idea what this relates to
+                localToWorldMatrices[i].m03 += 1f * i;
             }
             localToWorldBuffer.SetData(localToWorldMatrices);
             worldToLocalBuffer.SetData(worldToLocalMatrices);

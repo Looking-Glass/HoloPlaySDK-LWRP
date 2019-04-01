@@ -70,7 +70,7 @@ namespace LookingGlass {
 						var qs = Quilt.GetPreset(hp.quiltPreset);
 						EditorGUILayout.LabelField("Quilt Size: ", qs.quiltWidth + " x " + qs.quiltHeight);
 						EditorGUILayout.LabelField("View Size: ", qs.viewWidth + " x " + qs.viewHeight);
-						EditorGUILayout.LabelField("Tiling: ", qs.viewRows + " x " + qs.viewColumns);
+						EditorGUILayout.LabelField("Tiling: ", qs.viewColumns + " x " + qs.viewRows);
 						EditorGUILayout.LabelField("Views Total: ", ""+qs.numViews);
 						continue;
 					}

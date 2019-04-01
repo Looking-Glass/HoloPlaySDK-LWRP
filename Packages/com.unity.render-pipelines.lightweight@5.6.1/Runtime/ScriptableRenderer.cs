@@ -159,6 +159,16 @@ namespace UnityEngine.Experimental.Rendering.LWRP
             for (int i = 0; i < m_ActiveRenderPassQueue.Count; ++i)
                 m_ActiveRenderPassQueue[i].Execute(this, context, ref renderingData);
 
+            // holoplay
+            var holoplayLightfield = renderingData.cameraData.camera.GetComponent<LookingGlass.LightfieldPostProcess>();
+            if (holoplayLightfield != null) {
+                var holoplay = holoplayLightfield.GetComponentInParent<LookingGlass.Holoplay>();
+                cmd = CommandBufferPool.Get("Output Lightfield");
+				cmd.Blit(holoplay.quiltRT, null as RenderTexture, holoplay.lightfieldMat);
+                context.ExecuteCommandBuffer(cmd);
+                CommandBufferPool.Release(cmd);
+            }
+
             DisposePasses(ref context);
         }
 
