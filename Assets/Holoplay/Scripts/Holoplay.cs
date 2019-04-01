@@ -101,12 +101,8 @@ namespace LookingGlass {
 
 		// lwrp stuff
 #if HOLOPLAY_LWRP
-		public static bool shadowmapReady;
-		public static bool shadowmapDispose;
-		public static bool shadowmapOnlyRender; // todo: probably unnecessary
-		// todo: probably can be replaced with a check for a unique condition between the two
-		// like, if !shadowmapReady && !shadowmapDispose
-		// because the rest of the time it will def be ready
+		public static bool shadowmapReady = false;
+		public static bool shadowmapDispose = true;
 #endif
 
 		// functions
